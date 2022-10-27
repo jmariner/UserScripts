@@ -1,6 +1,5 @@
 // ==UserScript==
 // @name         Genshin Impact Battle Chronicle: Show Live Data
-// @namespace    http://tampermonkey.net/
 // @version      1.0
 // @description  Shows live data in the BC that's only visible in app (resin, commissions, etc)
 // @author       jmariner
