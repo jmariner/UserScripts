@@ -3,7 +3,7 @@
 // @description  Display the remaining time of a YouTube video during playback.
 // @version      1.1
 // @author       jmariner
-// @match        https://www.youtube.com/watch*
+// @match        https://www.youtube.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=youtube.com
 // @grant        none
 // ==/UserScript==
