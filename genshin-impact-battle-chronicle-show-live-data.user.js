@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         Genshin Impact Battle Chronicle: Show Live Data
-// @version      1.1
+// @version      2.0
 // @description  Shows live data in the BC that's only visible in app (resin, commissions, etc)
 // @author       jmariner
 // @match        https://act.hoyolab.com/app/community-game-records-sea/index.html?*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=hoyolab.com
 // @require      https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js
 // @require      https://cdn.jsdelivr.net/npm/dayjs@1/plugin/calendar.js
+// @require      https://cdn.jsdelivr.net/npm/js-md5@0.7.3/src/md5.min.js
 // @grant        none
 // ==/UserScript==
 
@@ -17,9 +18,17 @@ const API_URL = "https://bbs-api-os.hoyolab.com/game_record/genshin/api/dailyNot
 const TEST_DATA = `{"current_resin":160,"max_resin":160,"resin_recovery_time":"0","finished_task_num":4,"total_task_num":4,"is_extra_task_reward_received":true,"remain_resin_discount_num":0,"resin_discount_num_limit":3,"current_expedition_num":5,"max_expedition_num":5,"expeditions":[{"avatar_side_icon":"https://upload-os-bbs.mihoyo.com/game_record/genshin/character_side_icon/UI_AvatarIcon_Side_Ambor.png","status":"Ongoing","remained_time":"64368"},{"avatar_side_icon":"https://upload-os-bbs.mihoyo.com/game_record/genshin/character_side_icon/UI_AvatarIcon_Side_Kaeya.png","status":"Ongoing","remained_time":"64368"},{"avatar_side_icon":"https://upload-os-bbs.mihoyo.com/game_record/genshin/character_side_icon/UI_AvatarIcon_Side_Lisa.png","status":"Ongoing","remained_time":"64368"},{"avatar_side_icon":"https://upload-os-bbs.mihoyo.com/game_record/genshin/character_side_icon/UI_AvatarIcon_Side_Yelan.png","status":"Ongoing","remained_time":"64368"},{"avatar_side_icon":"https://upload-os-bbs.mihoyo.com/game_record/genshin/character_side_icon/UI_AvatarIcon_Side_Shinobu.png","status":"Ongoing","remained_time":"64368"}],"current_home_coin":30,"max_home_coin":2400,"home_coin_recovery_time":"283221","calendar_url":"","transformer":{"obtained":true,"recovery_time":{"Day":0,"Hour":21,"Minute":0,"Second":0,"reached":false},"wiki":"","noticed":false,"latest_job_id":"0"}}`;
 const USE_TEST_DATA = false;
 
-const dayjs = window.dayjs;
+const { md5, dayjs } = window;
 window.dayjs.extend(window.dayjs_plugin_calendar);
 const TIME_FMT = TIME_24 ? "HH:mm" : "hh:mm A";
+
+function makeDS() {
+    const CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const t = Math.floor(Date.now() / 1000);
+    const r = [...Array(6)].map(_ => CHARS[Math.floor(Math.random() * CHARS.length)]).join("");
+    const h = md5(`salt=${DS_SECRET}&t=${t}&r=${r}`);
+    return [t, r, h].join(",");
+}
 
 function formatTime(dateArg, nowStr = "Now") {
     if (typeof dateArg === "number" && dateArg <= 0) {
@@ -130,29 +139,6 @@ async function waitForDefined(getter, retryDelay = 100) {
 }
 
 async function run() {
-    // webpack require junk
-    const jsonp = await waitForDefined(() => window.webpackJsonp);
-    const moduleList = jsonp[0][1];
-    const cache = {};
-    function req(id) {
-        if (cache[id]) {
-            return cache[id].exports;
-        }
-        var _module = cache[id] = {
-            i: id,
-            l: false,
-            exports: {}
-        };
-        moduleList[id].call(_module.exports, _module, _module.exports, req);
-        _module.l = true;
-        return _module.exports;
-    }
-
-    // find required exports
-    const makeDS = req(
-        moduleList.map((f, i) => ({ f, i })).filter(({ f, i }) => f.toString().includes(`"OVLv"`))[0].i
-    );
-
     // set up full api url
     const query = await waitForDefined(() => {
         const {responseData, requestQueue} = window.miHoYoUserModelMemoryCache;
@@ -235,7 +221,7 @@ async function run() {
             method: "GET",
             credentials: "include",
             headers: {
-                DS: makeDS(DS_SECRET),
+                DS: makeDS(),
                 "x-rpc-app_version": "1.5.0",
                 "x-rpc-client_type": "5",
             }
