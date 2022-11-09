@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Genshin Impact Battle Chronicle: Show Live Data
-// @version      2.1
+// @version      2.2
 // @description  Shows live data in the BC that's only visible in app (resin, commissions, etc)
 // @author       jmariner
 // @match        https://act.hoyolab.com/app/community-game-records-sea/index.html?*
@@ -211,6 +211,11 @@ async function run() {
     // ===== display data ======
     async function updateData() {
         try {
+            if (isLoading) {
+                console.warn("[GIBC Show Live Data] Tried to update data while previous update is still loading.");
+                return;
+            }
+
             wrap.classList.add("loading");
             isLoading = true;
             await updateDataInner();
@@ -223,11 +228,6 @@ async function run() {
     }
 
     async function updateDataInner() {
-        if (isLoading) {
-            console.warn("[GIBC Show Live Data] Tried to update data while previous update is still loading.");
-            return;
-        }
-
         const resp = await fetch(fullURL, {
             method: "GET",
             credentials: "include",
