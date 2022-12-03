@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Genshin Impact Battle Chronicle: Show Live Data
-// @version      2.2
+// @version      2.3
 // @description  Shows live data in the BC that's only visible in app (resin, commissions, etc)
 // @author       jmariner
 // @match        https://act.hoyolab.com/app/community-game-records-sea/index.html?*
@@ -138,6 +138,61 @@ async function waitForDefined(getter, retryDelay = 100) {
     });
 }
 
+
+// EXPERIEMNTAL: daily check-in
+const DAILY_CHECKIN_LANG = "en-us";
+const DAILY_CHECKIN_ACT_ID = "e202102251931481";
+const DAILY_CHECKIN_DO_URL = `https://sg-hk4e-api.hoyolab.com/event/sol/sign?lang=${DAILY_CHECKIN_LANG}`;
+const DAILY_CHECKIN_STATUS_URL = `https://sg-hk4e-api.hoyolab.com/event/sol/resign_info?lang=${DAILY_CHECKIN_LANG}&act_id=${DAILY_CHECKIN_ACT_ID}`;
+
+async function getDailyCheckinData() {
+        const checkinStatusResp = await fetch(DAILY_CHECKIN_STATUS_URL, {
+        method: "GET",
+        credentials: "include",
+    });
+    const { retcode, data } = await checkinStatusResp.json();
+    if (retcode !== 0) {
+        throw new Error("Daily checkin failed: couldn't get status, retcode " + retcode);
+    }
+
+    return { checkedIn: data.signed };
+}
+
+function updateDailyCheckin(checkinData, blockElement) {
+    async function doCheckin() {
+        const resp = await fetch(DAILY_CHECKIN_DO_URL, {
+            method: "POST",
+            credentials: "include",
+            body: JSON.stringify({ act_id: DAILY_CHECKIN_ACT_ID }),
+        });
+
+        const { retcode: checkinRet } = await resp.json();
+        if (checkinRet !== 0) {
+            throw new Error("Daily checkin failed: couldn't check in, retcode " + checkinRet);
+        }
+    }
+
+    const { checkedIn } = checkinData;
+
+    const statusEl = document.createElement("span");
+    statusEl.innerText = `Daily Check-In: ${checkedIn ? "DONE" : "NOT DONE"}`;
+
+    let checkinBtn = null;
+    if (!checkedIn) {
+        checkinBtn = document.createElement("button");
+        checkinBtn.innerText = "Check In Now";
+        checkinBtn.addEventListener("click", () => {
+            doCheckin().catch(console.error);
+        });
+    }
+
+    const parentEl = blockElement.querySelector(".sub-title .right");
+    parentEl.appendChild(statusEl);
+    if (checkinBtn) {
+        parentEl.appendChild(checkinBtn);
+    }
+}
+
 async function run() {
     // set up full api url
     const query = await waitForDefined(() => {
@@ -200,6 +255,9 @@ async function run() {
     #${ID_DATA} .view-data-btn:hover {
         color: #7f858a;
     }
+    #${ID_DATA} .sub-title .right {
+        font-size: 0.8em;
+    }
     `;
 
     let isLoading = false;
@@ -244,6 +302,15 @@ async function run() {
         }
 
         const { data } = USE_TEST_DATA ? ({ data: JSON.parse(TEST_DATA) }) : respData;
+
+        // EXPERIEMNTAL: daily check-in
+        let dailyCheckinData = null;
+        try {
+            dailyCheckinData = await getDailyCheckinData();
+        }
+        catch (e) {
+            console.error("[DAILY CHECK-IN]", e);
+        }
 
         // update UI
         const oldDataArea = document.getElementById(ID_DATA);
@@ -328,6 +395,16 @@ async function run() {
         viewDataBtn.innerText = "View Raw Data";
 
         blockArea.querySelector(".panel").append(refreshedEl, viewDataBtn);
+
+        // EXPERIEMNTAL: daily check-in
+        try {
+            if (dailyCheckinData) {
+                updateDailyCheckin(dailyCheckinData, blockArea);
+            }
+        }
+        catch (e) {
+            console.error("[DAILY CHECK-IN]", e);
+        }
 
         wrap.prepend(blockArea);
     }
