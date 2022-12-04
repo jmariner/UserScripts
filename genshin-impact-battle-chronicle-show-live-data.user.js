@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Genshin Impact Battle Chronicle: Show Live Data
-// @version      2.3
+// @version      2.4
 // @description  Shows live data in the BC that's only visible in app (resin, commissions, etc)
 // @author       jmariner
 // @match        https://act.hoyolab.com/app/community-game-records-sea/index.html?*
@@ -158,7 +158,7 @@ async function getDailyCheckinData() {
     return { checkedIn: data.signed };
 }
 
-function updateDailyCheckin(checkinData, blockElement) {
+function updateDailyCheckin(checkinData, blockElement, onCheckin) {
     async function doCheckin() {
         const resp = await fetch(DAILY_CHECKIN_DO_URL, {
             method: "POST",
@@ -175,14 +175,14 @@ function updateDailyCheckin(checkinData, blockElement) {
     const { checkedIn } = checkinData;
 
     const statusEl = document.createElement("span");
-    statusEl.innerText = `Daily Check-In: ${checkedIn ? "DONE" : "NOT DONE"}`;
+    statusEl.innerText = `Daily Check-In: ${checkedIn ? "DONE" : ""}`;
 
     let checkinBtn = null;
     if (!checkedIn) {
         checkinBtn = document.createElement("button");
         checkinBtn.innerText = "Check In Now";
         checkinBtn.addEventListener("click", () => {
-            doCheckin().catch(console.error);
+            doCheckin().then(onCheckin).catch(console.error);
         });
     }
 
@@ -257,6 +257,18 @@ async function run() {
     }
     #${ID_DATA} .sub-title .right {
         font-size: 0.8em;
+        line-height: 0.8em;
+    }
+    #${ID_DATA} .sub-title .right button {
+        background: rgba(0, 0, 0, 0.15);
+        border: 1px solid rgb(211, 188, 141);
+        border-radius: 7px;
+        cursor: pointer;
+        margin-left: 4px;
+        padding: 4px 6px;
+    }
+    #${ID_DATA} .sub-title .right button:hover {
+        background: rgba(0, 0, 0, 0.25);
     }
     `;
 
@@ -399,7 +411,7 @@ async function run() {
         // EXPERIEMNTAL: daily check-in
         try {
             if (dailyCheckinData) {
-                updateDailyCheckin(dailyCheckinData, blockArea);
+                updateDailyCheckin(dailyCheckinData, blockArea, updateData);
             }
         }
         catch (e) {
