@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Genshin Impact Battle Chronicle: Show Live Data
-// @version      2.5
+// @version      2.6
 // @description  Shows live data in the BC that's only visible in app (resin, commissions, etc)
 // @author       jmariner
 // @match        https://act.hoyolab.com/app/community-game-records-sea/index.html?*
@@ -278,7 +278,7 @@ async function run() {
     const wrap = document.createElement("div");
     wrap.id = ID_WRAP;
 
-    const origSummaryEl = await waitForDefined(() => document.querySelector(".main-container .summary-block"));
+    const origSummaryEl = await waitForDefined(() => document.querySelector(".summary-block"));
 
     // ===== display data ======
     async function updateData() {
@@ -424,7 +424,7 @@ async function run() {
     }
 
     document.head.appendChild(style);
-    document.querySelector("main.main-container").parentElement.prepend(wrap);
+    origSummaryEl.parentElement.prepend(wrap);
 
     await updateData();
 
