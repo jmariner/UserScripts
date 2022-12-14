@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Genshin Impact Battle Chronicle: Show Live Data
-// @version      2.4
+// @version      2.5
 // @description  Shows live data in the BC that's only visible in app (resin, commissions, etc)
 // @author       jmariner
 // @match        https://act.hoyolab.com/app/community-game-records-sea/index.html?*
@@ -143,10 +143,10 @@ async function waitForDefined(getter, retryDelay = 100) {
 const DAILY_CHECKIN_LANG = "en-us";
 const DAILY_CHECKIN_ACT_ID = "e202102251931481";
 const DAILY_CHECKIN_DO_URL = `https://sg-hk4e-api.hoyolab.com/event/sol/sign?lang=${DAILY_CHECKIN_LANG}`;
-const DAILY_CHECKIN_STATUS_URL = `https://sg-hk4e-api.hoyolab.com/event/sol/resign_info?lang=${DAILY_CHECKIN_LANG}&act_id=${DAILY_CHECKIN_ACT_ID}`;
+const DAILY_CHECKIN_STATUS_URL = `https://sg-hk4e-api.hoyolab.com/event/sol/info?lang=${DAILY_CHECKIN_LANG}&act_id=${DAILY_CHECKIN_ACT_ID}`;
 
 async function getDailyCheckinData() {
-        const checkinStatusResp = await fetch(DAILY_CHECKIN_STATUS_URL, {
+    const checkinStatusResp = await fetch(DAILY_CHECKIN_STATUS_URL, {
         method: "GET",
         credentials: "include",
     });
@@ -155,7 +155,7 @@ async function getDailyCheckinData() {
         throw new Error("Daily checkin failed: couldn't get status, retcode " + retcode);
     }
 
-    return { checkedIn: data.signed };
+    return { todayDate: data.today, checkedIn: data.is_sign };
 }
 
 function updateDailyCheckin(checkinData, blockElement, onCheckin) {
@@ -172,7 +172,7 @@ function updateDailyCheckin(checkinData, blockElement, onCheckin) {
         }
     }
 
-    const { checkedIn } = checkinData;
+    const { todayDate, checkedIn } = checkinData;
 
     const statusEl = document.createElement("span");
     statusEl.innerText = `Daily Check-In: ${checkedIn ? "DONE" : ""}`;
@@ -191,6 +191,8 @@ function updateDailyCheckin(checkinData, blockElement, onCheckin) {
     if (checkinBtn) {
         parentEl.appendChild(checkinBtn);
     }
+
+    parentEl.title = `Today: ${todayDate}`;
 }
 
 async function run() {
