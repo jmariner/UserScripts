@@ -15,7 +15,7 @@ const DATA_UPDATE_DELAY = 3 * 60 * 1000;
 const TIME_24 = true;
 const DS_SECRET = "6s25p5ox5y14umn1p61aqyyvbvvl3lrt";
 const API_URL = "https://bbs-api-os.hoyolab.com/game_record/genshin/api/dailyNote";
-const TEST_DATA = `{"current_resin":160,"max_resin":160,"resin_recovery_time":"0","finished_task_num":4,"total_task_num":4,"is_extra_task_reward_received":true,"remain_resin_discount_num":0,"resin_discount_num_limit":3,"current_expedition_num":5,"max_expedition_num":5,"expeditions":[{"avatar_side_icon":"https://upload-os-bbs.mihoyo.com/game_record/genshin/character_side_icon/UI_AvatarIcon_Side_Ambor.png","status":"Ongoing","remained_time":"64368"},{"avatar_side_icon":"https://upload-os-bbs.mihoyo.com/game_record/genshin/character_side_icon/UI_AvatarIcon_Side_Kaeya.png","status":"Ongoing","remained_time":"64368"},{"avatar_side_icon":"https://upload-os-bbs.mihoyo.com/game_record/genshin/character_side_icon/UI_AvatarIcon_Side_Lisa.png","status":"Ongoing","remained_time":"64368"},{"avatar_side_icon":"https://upload-os-bbs.mihoyo.com/game_record/genshin/character_side_icon/UI_AvatarIcon_Side_Yelan.png","status":"Ongoing","remained_time":"64368"},{"avatar_side_icon":"https://upload-os-bbs.mihoyo.com/game_record/genshin/character_side_icon/UI_AvatarIcon_Side_Shinobu.png","status":"Ongoing","remained_time":"64368"}],"current_home_coin":30,"max_home_coin":2400,"home_coin_recovery_time":"283221","calendar_url":"","transformer":{"obtained":true,"recovery_time":{"Day":0,"Hour":21,"Minute":0,"Second":0,"reached":false},"wiki":"","noticed":false,"latest_job_id":"0"}}`;
+const TEST_DATA = `{"current_resin":160,"max_resin":160,"resin_recovery_time":"0","finished_task_num":4,"total_task_num":4,"is_extra_task_reward_received":false,"remain_resin_discount_num":3,"resin_discount_num_limit":3,"current_expedition_num":5,"max_expedition_num":5,"expeditions":[{"avatar_side_icon":"https://upload-os-bbs.mihoyo.com/game_record/genshin/character_side_icon/UI_AvatarIcon_Side_Ambor.png","status":"Finished","remained_time":"0"},{"avatar_side_icon":"https://upload-os-bbs.mihoyo.com/game_record/genshin/character_side_icon/UI_AvatarIcon_Side_Kaeya.png","status":"Finished","remained_time":"0"},{"avatar_side_icon":"https://upload-os-bbs.mihoyo.com/game_record/genshin/character_side_icon/UI_AvatarIcon_Side_Lisa.png","status":"Finished","remained_time":"0"},{"avatar_side_icon":"https://upload-os-bbs.mihoyo.com/game_record/genshin/character_side_icon/UI_AvatarIcon_Side_Yelan.png","status":"Finished","remained_time":"0"},{"avatar_side_icon":"https://upload-os-bbs.mihoyo.com/game_record/genshin/character_side_icon/UI_AvatarIcon_Side_Shinobu.png","status":"Finished","remained_time":"0"}],"current_home_coin":2400,"max_home_coin":2400,"home_coin_recovery_time":"0","calendar_url":"","transformer":{"obtained":true,"recovery_time":{"Day":0,"Hour":21,"Minute":0,"Second":0,"reached":true},"wiki":"","noticed":false,"latest_job_id":"0"}}`;
 const USE_TEST_DATA = false;
 
 const { md5, dayjs } = window;
@@ -54,6 +54,7 @@ function formatExpeditionCounts(exData, maxExCount) {
     return [
         `${exFinished}/${exData.length}`,
         inactiveCount > 0 ? inactiveCount + " not active" : "All active",
+        exFinished === exData.length,
     ];
 }
 
@@ -70,7 +71,7 @@ function formatExpeditionReadyTimes(exData, doneStr) {
 function formatTransformerTimes(transformerData, readyStr) {
     const { Day, Hour, Minute, Second, reached } = transformerData;
     if (reached) {
-        return [readyStr, null];
+        return [readyStr, null, true];
     }
 
     let sec = Second + Minute*60 + Hour*60*60;
@@ -225,6 +226,19 @@ async function run() {
     #${ID_DATA} .summary-item-layout {
         flex-basis: 25%;
     }
+    #${ID_DATA} .summary-item-layout .value {
+        position: relative;
+    }
+    #${ID_DATA} .summary-item-layout.alert .value::after {
+        content: "";
+        position: absolute;
+        top: -4px;
+        left: -8px;
+        width: 8px;
+        height: 8px;
+        background-color: red;
+        border-radius: 50%;
+    }
     #${ID_DATA} .sub-title {
         margin-bottom: 16px;
     }
@@ -344,6 +358,8 @@ async function run() {
             [
                 "Resin",
                 `${data.current_resin}/${data.max_resin}`,
+                null,
+                data.current_resin === data.max_resin,
             ],
             [
                 "Resin Refilled At",
@@ -351,12 +367,15 @@ async function run() {
             ],
             [
                 "Commissions",
-                `${data.finished_task_num}/${data.total_task_num}` + (data.total_task_num === data.finished_task_num && !data.is_extra_task_reward_received ? "*" : ""),
+                `${data.finished_task_num}/${data.total_task_num}`,
                 data.total_task_num === data.finished_task_num ? data.is_extra_task_reward_received ? "Daily reward recieved" : "Daily reward NOT recieved" : null,
+                data.total_task_num === data.finished_task_num && !data.is_extra_task_reward_received,
             ],
             [
                 "Weekly Boss Discounts Remaining",
                 `${data.remain_resin_discount_num}/${data.resin_discount_num_limit}`,
+                null,
+                data.remain_resin_discount_num === data.resin_discount_num_limit,
             ],
             [
                 "Expeditions",
@@ -370,6 +389,7 @@ async function run() {
                 "Teapot Jar of Riches",
                 `${data.current_home_coin}/${data.max_home_coin}`,
                 "Full at: " + formatTime(parseInt(data.home_coin_recovery_time, 10)),
+                data.current_home_coin === data.max_home_coin,
             ],
             [
                 "Parametic Transformer Ready At",
@@ -383,10 +403,11 @@ async function run() {
         }
         for (let i = 0; i < dataEntries.length; i++) {
             const childEl = dataArea.children[i];
-            const [label, value, title] = dataEntries[i];
+            const [label, value, title, showAlert] = dataEntries[i];
             if (title) {
                 childEl.setAttribute("title", title);
             }
+            childEl.classList.toggle("alert", !!showAlert);
             childEl.querySelector(".value").innerText = value.toString();
             childEl.querySelector(".desc").innerText = label;
         }
