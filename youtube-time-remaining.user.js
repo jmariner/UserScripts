@@ -1,10 +1,11 @@
 // ==UserScript==
-// @name         YouTube Time Remaining
-// @description  Display the remaining time of a YouTube video during playback.
-// @version      1.2
+// @name         YouTube/Twitch Time Remaining
+// @description  Display the remaining time of a YouTube/Twitch video during playback.
+// @version      2.0
 // @author       jmariner
 // @match        https://www.youtube.com/*
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=youtube.com
+// @match        https://www.twitch.tv/videos/*
+// @match        https://www.twitch.tv/*/video/*
 // @grant        none
 // ==/UserScript==
 
@@ -24,70 +25,78 @@ function secToString(sec) {
         (Math.floor(sec / MIN) % 60),
         sec % MIN,
     ]
-    .filter(x => x !== null)
-    .map((x, i) => `${x}`.padStart(i > 0 ? 2 : 1, "0"))
-    .join(":");
+        .filter(x => x !== null)
+        .map((x, i) => `${x}`.padStart(i > 0 ? 2 : 1, "0"))
+        .join(":");
 }
 
-function setup() {
-    const currentTimeEl = document.querySelector(".ytp-time-current");
-    const totalTimeEl = document.querySelector(".ytp-time-duration");
-    if (!currentTimeEl || !totalTimeEl) {
-        throw new Error("RETRY");
-    }
-
-    const timeRemainingEl = document.createElement("span");
-    timeRemainingEl.id = "yttr-display";
-    totalTimeEl.parentNode.insertBefore(timeRemainingEl, totalTimeEl.nextSibling);
-
-    var timeObserver = new MutationObserver((changes, obs) => {
-        const totalTime = stringToSec(totalTimeEl.innerText);
-        const currentTime = stringToSec(currentTimeEl.innerText);
-        timeRemainingEl.innerText = ` (${secToString(totalTime - currentTime)})`;
-    });
-
-    timeObserver.observe(currentTimeEl, {
-        childList: true,
-    });
-
-    const style = document.createElement("style");
-    style.id = "yttr-style";
-    style.innerHTML = `
-    #yttr-display {
-        color: hsl(0 0% 80%);
-    }
-    `;
-    document.head.appendChild(style);
-
-    console.log("yttr setup complete");
-}
-
-const MAX_TRIES = 10;
-let tryNum = 0;
-
-function init() {
-    try {
-        setup();
-    }
-    catch (e) {
-        if (e.message === "RETRY") {
-            if (tryNum < MAX_TRIES) {
-                tryNum++;
-                setTimeout(init, 500);
+async function waitForDefined(getter, retryDelay = 100) {
+    return new Promise((resolve) => {
+        function tryGet() {
+            const maybeVal = getter();
+            if (maybeVal) {
+                resolve(maybeVal);
             }
             else {
-                console.error(`yttr setup failed after ${MAX_TRIES} tries`);
+                setTimeout(tryGet, retryDelay);
             }
         }
-        else {
-            console.error(e);
-        }
-    }
+        tryGet();
+    });
 }
 
-try {
-    init();
+async function setup({ curTimeSel, totalTimeSel, obs: observerOptions, style, adder: elementAdder }) {
+    const currentTimeEl = await waitForDefined(() => document.querySelector(curTimeSel));
+    const totalTimeEl = await waitForDefined(() => document.querySelector(totalTimeSel));
+
+    console.log("time remaining - got elements", currentTimeEl, totalTimeEl);
+
+    const timeRemainingEl = document.createElement("span");
+    if (style) {
+        Object.assign(timeRemainingEl.style, style);
+    }
+    elementAdder(currentTimeEl, totalTimeEl, timeRemainingEl);
+
+    const changeHandler = (changes, obs) => {
+        const totalTime = stringToSec(totalTimeEl.innerText);
+        const currentTime = stringToSec(currentTimeEl.innerText);
+        timeRemainingEl.innerText = `(${secToString(totalTime - currentTime)})`;
+    };
+    const timeObserver = new MutationObserver(changeHandler);
+    timeObserver.observe(currentTimeEl, observerOptions);
+
+    changeHandler();
+
+    console.log("time remaining - setup complete");
 }
-catch (e) {
-    console.error(e);
+
+const SITES = [
+    [
+        "youtube.com",
+        {
+            curTimeSel: ".ytp-time-current",
+            totalTimeSel: ".ytp-time-duration",
+            obs: { childList: true },
+            style: { marginLeft: "4px", color: `hsl(0 0% 80%)` },
+            adder: (currentEl, totalEl, el) => totalEl.parentNode.insertBefore(el, totalEl.nextSibling),
+        }
+    ],
+    [
+        "twitch.tv",
+        {
+            curTimeSel: `[data-a-target="player-seekbar-current-time"]`,
+            totalTimeSel: `[data-a-target="player-seekbar-duration"]`,
+            obs: { childList: true, characterData: true, subtree: true },
+            style: { marginLeft: "auto", marginRight: "4px", color: "#fff" },
+            adder: (currentEl, totalEl, el) => currentEl.parentNode.insertBefore(el, currentEl.nextSibling),
+        }
+    ],
+];
+
+const config = SITES.find(([str]) => window.location.hostname.includes(str))[1];
+if (!config) {
+    console.error("no site found for URL:", window.location);
+}
+else {
+    setup(config).catch(console.error);
 }
