@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Genshin Impact Battle Chronicle: Show Live Data
-// @version      2.7
+// @version      2.8
 // @description  Shows live data in the BC that's only visible in app (resin, commissions, etc)
 // @author       jmariner
 // @match        https://act.hoyolab.com/app/community-game-records-sea/index.html?*
@@ -145,6 +145,7 @@ const DAILY_CHECKIN_LANG = "en-us";
 const DAILY_CHECKIN_ACT_ID = "e202102251931481";
 const DAILY_CHECKIN_DO_URL = `https://sg-hk4e-api.hoyolab.com/event/sol/sign?lang=${DAILY_CHECKIN_LANG}`;
 const DAILY_CHECKIN_STATUS_URL = `https://sg-hk4e-api.hoyolab.com/event/sol/info?lang=${DAILY_CHECKIN_LANG}&act_id=${DAILY_CHECKIN_ACT_ID}`;
+const DAILY_CHECKIN_FORCE_SHOW_BUTTON = false;
 
 async function getDailyCheckinData() {
     const checkinStatusResp = await fetch(DAILY_CHECKIN_STATUS_URL, {
@@ -179,21 +180,29 @@ function updateDailyCheckin(checkinData, blockElement, onCheckin) {
     statusEl.innerText = `Daily Check-In: ${checkedIn ? "DONE" : ""}`;
 
     let checkinBtn = null;
-    if (!checkedIn) {
+    if (!checkedIn || DAILY_CHECKIN_FORCE_SHOW_BUTTON) {
         checkinBtn = document.createElement("button");
         checkinBtn.innerText = "Check In Now";
         checkinBtn.addEventListener("click", () => {
-            doCheckin().then(onCheckin).catch(console.error);
+            if (!checkedIn) {
+                doCheckin().then(onCheckin).catch(console.error);
+            }
+            else {
+                alert("Already checked in");
+            }
         });
     }
 
-    const parentEl = blockElement.querySelector(".sub-title .right");
+    const parentEl = document.createElement("div");
+    parentEl.classList.add("checkin-area");
     parentEl.appendChild(statusEl);
     if (checkinBtn) {
         parentEl.appendChild(checkinBtn);
     }
 
     parentEl.title = `Today: ${todayDate}`;
+
+    blockElement.querySelector(".block-title").appendChild(parentEl);
 }
 
 async function run() {
@@ -223,6 +232,9 @@ async function run() {
     #${ID_WRAP}.loading .refresh-area a svg {
         animation: 1s linear infinite gibcld-spin;
     }
+    #${ID_WRAP} .summary-items {
+        pointer-events: unset !important;
+    }
     #${ID_DATA} .summary-item-layout {
         flex-basis: 25%;
     }
@@ -238,9 +250,6 @@ async function run() {
         height: 8px;
         background-color: red;
         border-radius: 50%;
-    }
-    #${ID_DATA} .sub-title {
-        margin-bottom: 16px;
     }
     #${ID_DATA} .panel {
         position: relative;
@@ -271,11 +280,14 @@ async function run() {
     #${ID_DATA} .view-data-btn:hover {
         color: #7f858a;
     }
-    #${ID_DATA} .sub-title .right {
-        font-size: 0.8em;
-        line-height: 0.8em;
+    #${ID_DATA} .checkin-area {
+        font-size: 1em;
+        line-height: 1em;
+        color: hsla(0, 0%, 100%, 0.85);
+        display: flex;
+        align-items: center;
     }
-    #${ID_DATA} .sub-title .right button {
+    #${ID_DATA} .checkin-area button {
         background: rgba(0, 0, 0, 0.15);
         border: 1px solid rgb(211, 188, 141);
         border-radius: 7px;
@@ -283,7 +295,7 @@ async function run() {
         margin-left: 4px;
         padding: 4px 6px;
     }
-    #${ID_DATA} .sub-title .right button:hover {
+    #${ID_DATA} .checkin-area button:hover {
         background: rgba(0, 0, 0, 0.25);
     }
     `;
@@ -350,8 +362,11 @@ async function run() {
 
         const blockArea = origSummaryEl.cloneNode(true);
         blockArea.id = ID_DATA;
-        blockArea.querySelector(".sub-title-ques").remove();
-        const titleEl = blockArea.querySelector(".sub-title");
+        const titleQuestionMark = blockArea.querySelector(".block-title-left-ic-question");
+        if (titleQuestionMark) {
+            titleQuestionMark.remove();
+        }
+        const titleEl = blockArea.querySelector(".block-title-text");
         titleEl.innerHTML = titleEl.innerHTML.replace("Summary", "Real-Time Notes");
 
         const dataEntries = [
