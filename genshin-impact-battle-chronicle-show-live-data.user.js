@@ -300,6 +300,7 @@ async function run() {
     }
     `;
 
+    let updateDataTimeout;
     let isLoading = false;
     const wrap = document.createElement("div");
     wrap.id = ID_WRAP;
@@ -308,6 +309,7 @@ async function run() {
 
     // ===== display data ======
     async function updateData() {
+        clearTimeout(updateDataTimeout);
         try {
             if (isLoading) {
                 console.warn("[GIBC Show Live Data] Tried to update data while previous update is still loading.");
@@ -321,7 +323,7 @@ async function run() {
         finally {
             isLoading = false;
             wrap.classList.remove("loading");
-            setTimeout(() => updateData().catch(console.error), DATA_UPDATE_DELAY);
+            updateDataTimeout = setTimeout(() => updateData().catch(console.error), DATA_UPDATE_DELAY);
         }
     }
 
