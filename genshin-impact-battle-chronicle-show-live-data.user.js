@@ -7,6 +7,9 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=hoyolab.com
 // @require      https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js
 // @require      https://cdn.jsdelivr.net/npm/dayjs@1/plugin/calendar.js
+// @require      https://cdn.jsdelivr.net/npm/dayjs@1/plugin/relativeTime.js
+// @require      https://cdn.jsdelivr.net/npm/dayjs@1/plugin/utc.js
+// @require      https://cdn.jsdelivr.net/npm/dayjs@1/plugin/timezone.js
 // @require      https://cdn.jsdelivr.net/npm/js-md5@0.7.3/src/md5.min.js
 // @grant        none
 // ==/UserScript==
@@ -19,8 +22,15 @@ const TEST_DATA = `{"current_resin":160,"max_resin":160,"resin_recovery_time":"0
 const USE_TEST_DATA = false;
 
 const { md5, dayjs } = window;
-window.dayjs.extend(window.dayjs_plugin_calendar);
+dayjs.extend(window.dayjs_plugin_calendar);
+dayjs.extend(window.dayjs_plugin_relativeTime);
+dayjs.extend(window.dayjs_plugin_utc);
+dayjs.extend(window.dayjs_plugin_timezone);
 const TIME_FMT = TIME_24 ? "HH:mm" : "hh:mm A";
+
+function capitalize(s) {
+    return s.charAt(0).toUpperCase() + s.substring(1);
+}
 
 function makeDS() {
     const CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -122,6 +132,24 @@ function formatResinTimes(resinReadySecStr, resinNow, resinMax) {
         formatTime(sec),
         extraTimes.join("\n").trim(),
     ];
+}
+
+function getNextResets() {
+    // Reset is always 4AM in GMT-5 for US region.
+    // This may break at the DST change but should continue working after the change.
+    let nextReset = dayjs(`${dayjs().tz("America/New_York").format("YYYY-MM-DD")}T04:00:00.000-05:00`)
+    if (nextReset.isBefore(dayjs()))
+        nextReset = nextReset.add(1, "day")
+
+    const nextWeekly = nextReset.day(1);
+    return [nextReset, nextWeekly].map(d => [
+        capitalize(d.fromNow()),
+        d.calendar(null, {
+            sameDay: "[Today at] " + TIME_FMT,
+            nextDay: "[Tomorrow at] " + TIME_FMT,
+            nextWeek: "[Next] ddd [at] " + TIME_FMT,
+        })
+    ]);
 }
 
 async function waitForDefined(getter, retryDelay = 100) {
@@ -344,6 +372,7 @@ async function run() {
         }
 
         const { data } = USE_TEST_DATA ? ({ data: JSON.parse(TEST_DATA) }) : respData;
+        const [ nextDailyReset, nextWeeklyReset ] = getNextResets();
 
         // EXPERIEMNTAL: daily check-in
         let dailyCheckinData = null;
@@ -412,6 +441,14 @@ async function run() {
                 "Parametic Transformer Ready At",
                 ...(data.transformer.obtained ? formatTransformerTimes(data.transformer.recovery_time, "Now") : ["N/A"]),
             ],
+            [
+                "Next Daily Reset",
+                ...nextDailyReset
+            ],
+            [
+                "Next Weekly Reset",
+                ...nextWeeklyReset
+            ]
         ].filter(e => e !== null && e.length >= 2);
 
         const dataArea = blockArea.querySelector(".summary-items");
