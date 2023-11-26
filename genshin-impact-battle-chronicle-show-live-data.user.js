@@ -389,8 +389,8 @@ async function run() {
             [
                 "Weekly Boss Discounts Remaining",
                 `${data.remain_resin_discount_num}/${data.resin_discount_num_limit}`,
-                null,
-                data.remain_resin_discount_num === data.resin_discount_num_limit,
+                data.remain_resin_discount_num > 0 ? "Some discounts remaining" : null,
+                data.remain_resin_discount_num > 0,
             ],
             [
                 "Expeditions",
