@@ -281,6 +281,7 @@ async function run() {
     }
     #${ID_DATA} .panel {
         position: relative;
+        padding: 20px 16px;
     }
     #${ID_DATA} .refresh-area {
         position: absolute;
