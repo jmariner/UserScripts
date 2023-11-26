@@ -418,18 +418,18 @@ async function run() {
                 data.total_task_num === data.finished_task_num && !data.is_extra_task_reward_received,
             ],
             [
-                "Weekly Boss Discounts Remaining",
-                `${data.remain_resin_discount_num}/${data.resin_discount_num_limit}`,
-                data.remain_resin_discount_num > 0 ? "Some discounts remaining" : null,
-                data.remain_resin_discount_num > 0,
-            ],
-            [
                 "Expeditions",
                 ...formatExpeditionCounts(data.expeditions, data.max_expedition_num),
             ],
             [
                 "Expeditions Done At",
                 ...formatExpeditionReadyTimes(data.expeditions, "Now"),
+            ],
+            [
+                "Weekly Boss Discounts Remaining",
+                `${data.remain_resin_discount_num}/${data.resin_discount_num_limit}`,
+                data.remain_resin_discount_num > 0 ? "Some discounts remaining" : null,
+                data.remain_resin_discount_num > 0,
             ],
             [
                 "Teapot Jar of Riches",
