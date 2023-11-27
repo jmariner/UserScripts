@@ -135,13 +135,19 @@ function formatResinTimes(resinReadySecStr, resinNow, resinMax) {
 }
 
 function getNextResets() {
+    // https://genshin-impact.fandom.com/wiki/Reset
+    const now = dayjs();
+
     // Reset is always 4AM in GMT-5 for US region.
     // This may break at the DST change but should continue working after the change.
-    let nextReset = dayjs(`${dayjs().tz("America/New_York").format("YYYY-MM-DD")}T04:00:00.000-05:00`)
-    if (nextReset.isBefore(dayjs()))
+    let nextReset = dayjs(`${now.tz("America/New_York").format("YYYY-MM-DD")}T04:00:00.000-05:00`)
+    if (nextReset.isBefore(now))
         nextReset = nextReset.add(1, "day")
 
-    const nextWeekly = nextReset.day(1);
+    let nextWeekly = nextReset.day(1);
+    if (nextWeekly.isBefore(now))
+        nextWeekly = nextWeekly.add(1, "week");
+
     return [nextReset, nextWeekly].map(d => [
         capitalize(d.fromNow()),
         d.calendar(null, {
