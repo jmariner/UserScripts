@@ -47,9 +47,9 @@ function formatTime(dateArg, nowStr = "Now") {
 
     const date = (
         !dateArg ? dayjs() :
-        typeof dateArg === "number" ? dayjs().add(dateArg, "s") :
-        dayjs.isDayjs(dateArg) ? dateArg :
-        dayjs(dateArg)
+            typeof dateArg === "number" ? dayjs().add(dateArg, "s") :
+                dayjs.isDayjs(dateArg) ? dateArg :
+                    dayjs(dateArg)
     );
     return date.calendar(null, {
         sameDay: TIME_FMT,
@@ -84,7 +84,7 @@ function formatTransformerTimes(transformerData, readyStr) {
         return [readyStr, null, true];
     }
 
-    let sec = Second + Minute*60 + Hour*60*60;
+    let sec = Second + Minute * 60 + Hour * 60 * 60;
 
     // seems like only one of Day, Hour, Minute, Second are ever > 0,
     // so output times rounded to next hour/minute as estimates
@@ -242,7 +242,7 @@ function updateDailyCheckin(checkinData, blockElement, onCheckin) {
 async function run() {
     // set up full api url
     const query = await waitForDefined(() => {
-        const {responseData, requestQueue} = window.miHoYoUserModelMemoryCache;
+        const { responseData, requestQueue } = window.miHoYoUserModelMemoryCache;
         const keys = [...Object.keys(requestQueue), ...Object.keys(responseData)];
         for (const k of keys) {
             const match = /^genshinapi\w+server(\w+)role_id(\d+)$/.exec(k);
@@ -255,6 +255,7 @@ async function run() {
     const fullURL = `${API_URL}?${new URLSearchParams(query)}`;
 
     // ===== setup UI =====
+    const SECTION_HEADER = "Real-Time Notes";
     const ID_WRAP = "gibcld-wrap";
     const ID_DATA = "gibcld-data";
     const style = document.createElement("style");
@@ -379,7 +380,7 @@ async function run() {
         }
 
         const { data } = USE_TEST_DATA ? ({ data: JSON.parse(TEST_DATA) }) : respData;
-        const [ nextDailyReset, nextWeeklyReset ] = getNextResets();
+        const [nextDailyReset, nextWeeklyReset] = getNextResets();
 
         // EXPERIEMNTAL: daily check-in
         let dailyCheckinData = null;
@@ -405,7 +406,7 @@ async function run() {
             titleQuestionMark.remove();
         }
         const titleEl = blockArea.querySelector(".block-title-text");
-        titleEl.innerHTML = titleEl.innerHTML.replace("Summary", "Real-Time Notes");
+        titleEl.innerHTML = titleEl.innerHTML.replace("Summary", SECTION_HEADER);
 
         const dataEntries = [
             [
@@ -507,6 +508,18 @@ async function run() {
 
     document.head.appendChild(style);
     origSummaryEl.parentElement.prepend(wrap);
+
+    // Patch new nav sidebar to include this new section.
+    // Sidebar works based off the .block-title elements, so since this adds a new one, it mostly works but just needs the labels shifted down by one.
+    // This means the final nav item will be lost but that's fine.
+    const navItemsParent = await waitForDefined(() => document.querySelector("ul.pc-ys-navigation"));
+    const navItems = navItemsParent.querySelectorAll("li .pc-ys-navigation__item-text");
+    let nextLabel = SECTION_HEADER;
+    for (const el of Array.from(navItems)) {
+        const prevLabel = el.innerText;
+        el.innerText = nextLabel;
+        nextLabel = prevLabel;
+    }
 
     await updateData();
 
