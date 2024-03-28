@@ -114,7 +114,7 @@ function formatTransformerTimes(transformerData, readyStr) {
 
 function formatResinTimes(resinReadySecStr, resinNow, resinMax) {
     const SEC_PER_RESIN = 8 * 60;
-    const RESIN_EXTRA_BREAKPOINTS = [20, 30, 40, 60, 80, 120];
+    const RESIN_EXTRA_BREAKPOINTS = [20, 30, 40, 60, 80, 90, 120];
     const RESIN_USE_BREAKPOINTS = [20, 30, 40, 60, 80, 120, 160];
     const sec = parseInt(resinReadySecStr, 10);
 
@@ -129,7 +129,8 @@ function formatResinTimes(resinReadySecStr, resinNow, resinMax) {
     ];
 
     return [
-        formatTime(sec),
+        // NOTE: API responds with 0 sec when resin is 159/160
+        resinNow < resinMax && sec === 0 ? "Soon?" : formatTime(sec),
         extraTimes.join("\n").trim(),
     ];
 }
@@ -513,13 +514,15 @@ async function run() {
     // Sidebar works based off the .block-title elements, so since this adds a new one, it mostly works but just needs the labels shifted down by one.
     // This means the final nav item will be lost but that's fine.
     const navItemsParent = await waitForDefined(() => document.querySelector("ul.pc-ys-navigation"));
-    const navItems = navItemsParent.querySelectorAll("li .pc-ys-navigation__item-text");
-    let nextLabel = SECTION_HEADER;
-    for (const el of Array.from(navItems)) {
-        const prevLabel = el.innerText;
-        el.innerText = nextLabel;
-        nextLabel = prevLabel;
-    }
+    setTimeout(() => {
+        const navItems = navItemsParent.querySelectorAll("li .pc-ys-navigation__item-text");
+        let nextLabel = SECTION_HEADER;
+        for (const el of Array.from(navItems)) {
+            const prevLabel = el.innerText;
+            el.innerText = nextLabel;
+            nextLabel = prevLabel;
+        }
+    }, 3000);
 
     await updateData();
 
